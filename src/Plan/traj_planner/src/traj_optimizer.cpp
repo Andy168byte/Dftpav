@@ -81,9 +81,6 @@ bool PolyTrajOptimizer::OptimizeTrajectory(
   // variable_num_ += 2;
   //Waypoints + T + GearPosition + angle
 
-
-
-
   ros::Time t0 = ros::Time::now(), t1, t2;
   int restart_nums = 0, rebound_times = 0;
   bool flag_force_return, flag_still_occ, flag_success;
@@ -112,12 +109,6 @@ bool PolyTrajOptimizer::OptimizeTrajectory(
   // offset +=  trajnum-1;
   // memcpy(x.data()+offset,finState_container[trajnum-1].col(1).data(), 2 * sizeof(x[0]));
 
-
-
-
-
-
-
   lbfgs::lbfgs_parameter_t lbfgs_params;
   lbfgs_params.mem_size = memsize;//128
   lbfgs_params.past = past; //3
@@ -128,9 +119,6 @@ bool PolyTrajOptimizer::OptimizeTrajectory(
   lbfgs_params.max_iterations = 12000;
   t_now_ = now;
 
-  if (angles.size() > 0)
-    std::cout << "init angles: " << angles.transpose() << std::endl;
-
   /* ---------- prepare ---------- */
   iter_num_ = 0;
   flag_force_return = false;
@@ -139,7 +127,6 @@ bool PolyTrajOptimizer::OptimizeTrajectory(
   flag_success = false;
   /* ---------- optimize ---------- */
   t1 = ros::Time::now();
-  std::cout << "begin to optimize!\n";
   int result = lbfgs::lbfgs_optimize(
       x,
       final_cost,
@@ -151,10 +138,6 @@ bool PolyTrajOptimizer::OptimizeTrajectory(
   t2 = ros::Time::now();
   double time_ms = (t2 - t1).toSec() * 1000;
   double total_time_ms = (t2 - t0).toSec() * 1000;
-  if (angles.size() > 0)
-    std::cout << "Fin angles: " << angles.transpose() << std::endl;
-
-
 
   /* ---------- get result and check collision ---------- */
   if (result == lbfgs::LBFGS_CONVERGENCE ||
@@ -170,7 +153,6 @@ bool PolyTrajOptimizer::OptimizeTrajectory(
   } else {
     ROS_WARN("Solver error. Return = %d, %s. Skip this planning.", result, lbfgs::lbfgs_strerror(result));
   }
-
 
   // initInnerPts  = ctrl_points_;
   // ros::shutdown();
@@ -223,7 +205,7 @@ double PolyTrajOptimizer::costFunctionCallback(void *func_data, const Eigen::Vec
     Gear_container.push_back(Gear);
     gradGear_container.push_back(gradGear);
   }
-  //
+
   Eigen::Map<const Eigen::VectorXd> Angles(x.data() + offset, opt->trajnum - 1);
   Eigen::Map<Eigen::VectorXd> gradAngles(grad.data() + offset, opt->trajnum - 1);
   gradAngles.setZero();
@@ -233,13 +215,6 @@ double PolyTrajOptimizer::costFunctionCallback(void *func_data, const Eigen::Vec
   // Eigen::Map<const Eigen::MatrixXd> endV (x.data()+offset, 2, 1);
   // Eigen::Map<Eigen::MatrixXd> gradendV (grad.data()+offset, 2, 1);
   // gradendV.setZero();
-
-
-
-
-
-
-
   // Eigen::VectorXd gradt;
   for (int trajid = 0; trajid < opt->trajnum; trajid++) {
     double smoo_cost;
@@ -522,8 +497,6 @@ void PolyTrajOptimizer::addPVAGradCost2CT(Eigen::VectorXd &costs, const int traj
       if (j != K || (j == K && i == N - 1)) {
         ++i_dp;
       }
-
-
       // add cost z_h0 = ||v||
       if (z_h0 < 1e-4 || (j == 0 && i == 0) || (i == N - 1 && j == K)) {
         continue;

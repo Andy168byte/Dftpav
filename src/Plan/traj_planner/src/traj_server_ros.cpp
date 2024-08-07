@@ -74,14 +74,11 @@ void TrajPlannerServer::Init(const std::string &config_path) {
 
 //call the main thread
 void TrajPlannerServer::Start() {
-  // printf("\033[34mTrajPlannerServer]TrajPlannerServer::Start\n\033[0m");
-
 
   if (is_replan_on_) {
     return;
   }
   is_replan_on_ = true;  // only call once
-  //@yuwei : set map interface to planner
   p_planner_->set_map_interface(&map_adapter_);
   printf("[TrajPlannerServer]Planner server started.\n");
 
@@ -470,12 +467,7 @@ ErrorType TrajPlannerServer::Replan() {
 }
 
 void TrajPlannerServer::ParkingCallback(const geometry_msgs::PoseStamped &msg) {
-  std::cout << "Triggered parking mode!" << std::endl;
-  end_pt_ << msg.pose.position.x, msg.pose.position.y,
-      tf::getYaw(msg.pose.orientation), 1.0e-2;
-  std::cout << "end_pt: " << end_pt_.transpose() << std::endl;
-  end_pt_ << -20.2606, -7.24047, -3.13672, 0.01;
-
+  end_pt_ << msg.pose.position.x, msg.pose.position.y, tf::getYaw(msg.pose.orientation), 1.0e-2;
   have_parking_target_ = true;
   p_planner_->setParkingEnd(end_pt_);
 }

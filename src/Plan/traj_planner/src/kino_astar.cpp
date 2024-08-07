@@ -215,17 +215,14 @@ int KinoAstar::search(Eigen::Vector4d start_state, Eigen::Vector2d init_ctrl,
       } else {
         tmp_g_score += std::fabs(input[1]) * traj_back_penalty;
       }
-      // std::cout<<"1111111111111111gscore: "<<tmp_g_score<<"\n";
       if (singul * lastDir < 0) {
         tmp_g_score += traj_gear_switch_penalty;
       }
       tmp_g_score += traj_steer_penalty * std::fabs(input[0]) * std::fabs(input[1]);
       tmp_g_score += traj_steer_change_penalty * std::fabs(input[0] - cur_node->input[0]);
       tmp_g_score += cur_node->g_score;
-      // std::cout<<"2222222222222222222222gscrore: "<<tmp_g_score<<"\n";
       tmp_f_score = tmp_g_score + lambda_heu_ * getHeu(pro_state, end_state);
       // tmp_f_score = tmp_g_score + lambda_heu_ * getObsHeu(pro_state.head(2));
-      // std::cout<<"tmpfscore: "<<tmp_f_score<<"\n";
       // std::cout<<"g1: "<<( ctrl_input(1)*ctrl_input(1) + 10*ctrl_input(0)*ctrl_input(0) + w_time_) * tau<<" g0: "<<backward_penalty<<
       // "h: "<<lambda_heu_ * getHeu(pro_state, end_state)<<"\n";
       /* ---------- compare expanded node in this loop ---------- */
@@ -507,7 +504,7 @@ void KinoAstar::NodeVis(Eigen::Vector3d state) {
 void KinoAstar::getKinoNode(plan_utils::KinoTrajData &flat_trajs) {
   double truncate_len = 25.0;
   bool exceed_len = false;
-
+  /// 根据混合A星搜索出来的path生成一条traj，供后续MINCO初始化使用
   flat_trajs.clear();
   std::vector<Eigen::Vector3d> roughSampleList;
   double startvel = fabs(start_state_[3]);
@@ -531,6 +528,7 @@ void KinoAstar::getKinoNode(plan_utils::KinoTrajData &flat_trajs) {
     node = node->parent;
   }
   start_state_[2] = normalize_angle(start_state_[2]);
+  /// search出来的state （x,y,yaw)
   roughSampleList.push_back(start_state_.head(3));
   reverse(roughSampleList.begin(), roughSampleList.end());
 
@@ -555,16 +553,16 @@ void KinoAstar::getKinoNode(plan_utils::KinoTrajData &flat_trajs) {
     end_state_[2] = normalize_angle(end_state_[2]);
     roughSampleList.push_back(end_state_.head(3));
   }
-  //truncate the init trajectory
-  double tmp_len = 0;
-  int truncate_idx = 0;
-  for (truncate_idx = 0; truncate_idx < roughSampleList.size() - 1; truncate_idx++) {
-    tmp_len += (roughSampleList[truncate_idx + 1] - roughSampleList[truncate_idx]).norm();
-    // if(tmp_len>truncate_len){
-    //   break;
-    // }
-  }
-  roughSampleList.assign(roughSampleList.begin(), roughSampleList.begin() + truncate_idx + 1);
+//  truncate the init trajectory
+//  double tmp_len = 0;
+//  int truncate_idx = 0;
+//  for (truncate_idx = 0; truncate_idx < roughSampleList.size() - 1; truncate_idx++) {
+//    tmp_len += (roughSampleList[truncate_idx + 1] - roughSampleList[truncate_idx]).norm();
+//    if (tmp_len > truncate_len) {
+//      break;
+//    }
+//  }
+  roughSampleList.assign(roughSampleList.begin(), roughSampleList.end());
   SampleTraj = roughSampleList;
   /*divide the whole shot traj into different segments*/
   shot_lengthList.clear();

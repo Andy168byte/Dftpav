@@ -582,13 +582,13 @@ ErrorType TrajPlanner::RunMINCOParking() {
   std::cout << "convert time: " << (t2 - t1) << std::endl;
   ploy_traj_opt_->setSurroundTrajs(&surround_trajs);
   // ploy_traj_opt_->setSurroundTrajs(NULL);
-  std::cout << "try to optimize!\n";
+  /// 每个换档点作为一个MINCO轨迹的更换点
+  /// iniState_container: 每个MINCO轨迹的起始状态 finState_container： 每个MINCO轨迹的终止状态
+  /// waypoints_container： 每条MINCO轨迹的中间点的XY（均匀时间采样） duration_container：每条MINCO轨迹的duration
 
   int flag_success = ploy_traj_opt_->OptimizeTrajectory(iniState_container, finState_container,
                                                         waypoints_container, duration_container,
                                                         sfc_container, singul_container, worldtime, 0.0);
-  std::cout << "optimize ended!\n";
-
   if (flag_success) {
     std::cout << "[PolyTrajManager] Planning success ! " << std::endl;
     for (unsigned int i = 0; i < kino_trajs_.size(); i++) {
