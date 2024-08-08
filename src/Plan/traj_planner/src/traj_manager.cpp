@@ -545,7 +545,7 @@ ErrorType TrajPlanner::RunMINCOParking() {
       }
       res_time += ego_piece_dur_vec[i];
     }
-    std::cout << "s: " << kino_traj.singul << "\n";
+
     double tm1 = ros::Time::now().toSec();
     getRectangleConst(statelist);
     sfc_container.push_back(hPolys_);
