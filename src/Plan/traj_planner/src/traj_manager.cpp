@@ -489,7 +489,6 @@ ErrorType TrajPlanner::RunMINCO() {
 ErrorType TrajPlanner::RunMINCOParking() {
   //TO DO
 
-
   traj_container_.clearSingul();
   Eigen::MatrixXd flat_finalState(2, 3), flat_headState(2, 3);
   Eigen::VectorXd ego_piece_dur_vec;
