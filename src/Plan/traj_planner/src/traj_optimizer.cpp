@@ -564,7 +564,7 @@ void PolyTrajOptimizer::addPVAGradCost2CT(Eigen::VectorXd &costs, const int traj
             jerkOpt_container[trajid].get_gdC().block<6, 2>(i * 6, 0) +=
                 omg * step * wei_obs_ * violaPosPenaD * gradViolaPc;
             jerkOpt_container[trajid].get_gdT() +=
-                omg * wei_obs_ * (violaPosPenaD * gradViolaPt * step + violaPosPena / K);
+                omg * wei_obs_ * (violaPosPenaD * gradViolaPt * step);
 
             costs(0) += omg * step * wei_obs_ * violaPosPena; // cost is the same
           }
@@ -574,31 +574,26 @@ void PolyTrajOptimizer::addPVAGradCost2CT(Eigen::VectorXd &costs, const int traj
       // ---------------------surrounding vehicle avoidance
       double gradt, grad_prev_t, costp;
       Eigen::Vector2d gradp, gradp2;
-
-
       // if(surroundGradCostP(i_dp, t + step * j, sigma, dsigma, gradp, gradt, grad_prev_t, costp))
       // {
-
       //signed dist
-      // use it! @hzc
-
-
       if (surround_trajs_ != NULL) {
-        costs(1) += dynamicObsGradCostP(omg,
-                                        step,
-                                        t + step * j,
-                                        beta0,
-                                        beta1,
-                                        alpha,
-                                        i,
-                                        K,
-                                        sigma,
-                                        dsigma,
-                                        ddsigma,
-                                        ego_R,
-                                        help_R,
-                                        trajid,
-                                        trajtime);
+        costs(1) += surroundGradCostP(t + step * j, sigma, dsigma, omg, step, alpha, trajid, i, beta0, beta1);
+//        costs(1) += dynamicObsGradCostP(omg,
+//                                        step,
+//                                        t + step * j,
+//                                        beta0,
+//                                        beta1,
+//                                        alpha,
+//                                        i,
+//                                        K,
+//                                        sigma,
+//                                        dsigma,
+//                                        ddsigma,
+//                                        ego_R,
+//                                        help_R,
+//                                        trajid,
+//                                        trajtime);
       }
 
       if (violaVel > 0.0) {
@@ -609,7 +604,7 @@ void PolyTrajOptimizer::addPVAGradCost2CT(Eigen::VectorXd &costs, const int traj
         jerkOpt_container[trajid].get_gdC().block<6, 2>(i * 6, 0) +=
             omg * step * wei_feas_ * violaVelPenaD * gradViolaVc;
         jerkOpt_container[trajid].get_gdT() +=
-            omg * wei_feas_ * (violaVelPenaD * gradViolaVt * step + violaVelPena / K);
+            omg * wei_feas_ * (violaVelPenaD * gradViolaVt * step);
         costs(2) += omg * step * wei_feas_ * violaVelPena;
         velcost += omg * step * wei_feas_ * violaVelPena;
 
@@ -623,7 +618,7 @@ void PolyTrajOptimizer::addPVAGradCost2CT(Eigen::VectorXd &costs, const int traj
         jerkOpt_container[trajid].get_gdC().block<6, 2>(i * 6, 0) +=
             omg * step * wei_feas_ * violaAccPenaD * gradViolaAc;
         jerkOpt_container[trajid].get_gdT() +=
-            omg * wei_feas_ * (violaAccPenaD * gradViolaAt * step + violaAccPena / K);
+            omg * wei_feas_ * (violaAccPenaD * gradViolaAt * step);
         costs(2) += omg * step * wei_feas_ * violaAccPena;
         acccost += omg * step * wei_feas_ * violaAccPena;
       }
@@ -655,7 +650,7 @@ void PolyTrajOptimizer::addPVAGradCost2CT(Eigen::VectorXd &costs, const int traj
         jerkOpt_container[trajid].get_gdC().block<6, 2>(i * 6, 0) +=
             omg * step * wei_feas_ * 10.0 * violaCurPenaDL * gradViolaKLc;
         jerkOpt_container[trajid].get_gdT() +=
-            omg * wei_feas_ * 10.0 * (violaCurPenaDL * gradViolaKLt * step + violaCurPenaL / K);
+            omg * wei_feas_ * 10.0 * (violaCurPenaDL * gradViolaKLt * step);
         costs(2) += omg * step * wei_feas_ * 10.0 * violaCurPenaL;
         curcost += omg * step * wei_feas_ * 10.0 * violaCurPenaL;
       }
@@ -669,7 +664,7 @@ void PolyTrajOptimizer::addPVAGradCost2CT(Eigen::VectorXd &costs, const int traj
         jerkOpt_container[trajid].get_gdC().block<6, 2>(i * 6, 0) +=
             omg * step * wei_feas_ * 10.0 * violaCurPenaDR * gradViolaKRc;
         jerkOpt_container[trajid].get_gdT() +=
-            omg * wei_feas_ * 10.0 * (violaCurPenaDR * gradViolaKRt * step + violaCurPenaR / K);
+            omg * wei_feas_ * 10.0 * (violaCurPenaDR * gradViolaKRt * step);
         costs(2) += omg * step * wei_feas_ * 10.0 * violaCurPenaR;
         curcost += omg * step * wei_feas_ * 10.0 * violaCurPenaR;
       }
@@ -798,25 +793,24 @@ void PolyTrajOptimizer::getBoundPts(Eigen::Vector2d &position, double angle,
 }
 
 // using the circle model, for other cars(with same parameters)
-bool PolyTrajOptimizer::surroundGradCostP(const int i_dp,           // index of constraint point
-                                          const double t,           // current absolute time
-                                          const Eigen::Vector2d &p, // the rear model
-                                          const Eigen::Vector2d &v,
-                                          Eigen::Vector2d &gradp,
-                                          double &gradt,
-                                          double &grad_prev_t,
-                                          double &costp) {
-  if (i_dp <= 0) return false;
+double PolyTrajOptimizer::surroundGradCostP(const double t,           // current absolute time
+                                            const Eigen::Vector2d &p, // the rear model
+                                            const Eigen::Vector2d &v,
+                                            double omg,
+                                            double step,
+                                            const double &gama,
+                                            const int &trajid,
+                                            const int &pieceid,
+                                            const Eigen::Matrix<double, 6, 1> &beta0,
+                                            const Eigen::Matrix<double, 6, 1> &beta1) {
   if (surround_trajs_->size() < 1) return false;
 
-  bool ret = false;
-
-  gradp.setZero();
-  gradt = 0;
-  grad_prev_t = 0;
-  costp = 0;
-
-  const double CLEARANCE2 = (surround_clearance_ * 1.5) * (surround_clearance_ * 1.5);
+  double gradt = 0;
+  double grad_prev_t = 0;
+  double costp = 0;
+  double totalPenalty = 0.0;
+  Eigen::Matrix<double, 6, 2> gradViolaPc;
+  const double CLEARANCE2 = surround_clearance_ * surround_clearance_;
   // only counts when the distance is smaller than clearance
 
   constexpr double b = 1.0, inv_b2 = 1 / b / b;
@@ -845,25 +839,26 @@ bool PolyTrajOptimizer::surroundGradCostP(const int i_dp,           // index of 
     double dist2_err = CLEARANCE2 - ellip_dist2;
     double dist2_err2 = dist2_err * dist2_err;
     double dist2_err3 = dist2_err2 * dist2_err;
-
-    if (dist2_err3 > 0) // only accout the cost term when the distance is within the clearance
-    {
-      ret = true;
-
-      costp += wei_surround_ * dist2_err3;
+    // only accout the cost term when the distance is within the clearance
+    if (dist2_err3 > 0) {
+      costp = wei_surround_ * dist2_err3;
       Eigen::Vector2d
           dJ_dP = wei_surround_ * 3 * dist2_err2 * (-2) * Eigen::Vector2d(inv_b2 * dist_vec(0), inv_b2 * dist_vec(1));
-      gradp += dJ_dP;
-      gradt += dJ_dP.dot(v - surround_v);
-      grad_prev_t += dJ_dP.dot(-surround_v);
+      gradViolaPc = beta0 * dJ_dP.transpose();
+      gradt = dJ_dP.dot(v);
+      grad_prev_t = dJ_dP.dot(-surround_v);
+      totalPenalty += omg * step * costp;
+      jerkOpt_container[trajid].get_gdC().block<6, 2>(pieceid * 6, 0) +=
+          omg * step * gradViolaPc;
+      jerkOpt_container[trajid].get_gdT() +=
+          omg * (gama * gradt * step);                     // j gradient to t
+      // the gradient of absolute t
+      jerkOpt_container[trajid].get_gdT() += omg * step * grad_prev_t * pieceid / piece_num_container[trajid];
+      jerkOpt_container[trajid].get_gdT() += omg * step * gama * grad_prev_t / piece_num_container[trajid];
     }
 
-    if (min_ellip_dist2_ > ellip_dist2) {
-      min_ellip_dist2_ = ellip_dist2;
-    }
   }
-
-  return ret;
+  return totalPenalty;
 }
 double PolyTrajOptimizer::debugGradCheck(const int i_dp, // index of constraint point
                                          double t, // current absolute time
@@ -1256,7 +1251,6 @@ double PolyTrajOptimizer::debugGradCheck(const int i_dp, // index of constraint 
 // develop with signed distance
 // for current simulation, they add only vehicles with the same size.
 // in the future, more size can be added
-// 111
 double PolyTrajOptimizer::dynamicObsGradCostP(
     const double &omg,
     const double &step,
@@ -1312,7 +1306,7 @@ double PolyTrajOptimizer::dynamicObsGradCostP(
     gradt = 0;
     grad_prev_t = 0;
     double traj_i_satrt_time = surround_trajs_->at(sur_id).start_time;
-    double offsettime = t_now_ - traj_i_satrt_time + trajtime;
+    double offsettime = t_now_ - traj_i_satrt_time;
     double pt_time = offsettime + t;
 
     Eigen::Vector2d surround_p, surround_v, surround_a;
@@ -1603,15 +1597,17 @@ double PolyTrajOptimizer::dynamicObsGradCostP(
     // for(int idx = 0; idx < trajid; idx++){
     //   gdTs[idx].array() += omg * step * wei_surround_ * grad_prev_t * violaDynamicObsPenaD;
     // }
-    jerkOpt_container[trajid].get_gdT() += omg * wei_surround_ * (violaDynamicObsPena / trajres
-        + violaDynamicObsPenaD * gradViolaPt * step);                     // j gradient to t
+    jerkOpt_container[trajid].get_gdT() +=
+        omg * wei_surround_ * (violaDynamicObsPenaD * gradViolaPt * step);                     // j gradient to t
     // the gradient of absolute t
-    jerkOpt_container[trajid].get_gdT() += omg * step * wei_surround_ * grad_prev_t * violaDynamicObsPenaD * pieceid;
-    jerkOpt_container[trajid].get_gdT() += omg * step * wei_surround_ * gama * grad_prev_t * violaDynamicObsPenaD;
-    for (int idx = 0; idx < trajid; idx++) {
-      jerkOpt_container[trajid].get_gdT() +=
-          omg * step * wei_surround_ * grad_prev_t * violaDynamicObsPenaD * piece_num_container[trajid];
-    }
+    jerkOpt_container[trajid].get_gdT() +=
+        omg * step * wei_surround_ * grad_prev_t * violaDynamicObsPenaD * pieceid / piece_num_container[trajid];
+    jerkOpt_container[trajid].get_gdT() +=
+        omg * step * wei_surround_ * gama * grad_prev_t * violaDynamicObsPenaD / piece_num_container[trajid];
+//    for (int idx = 0; idx < trajid; idx++) {
+//      jerkOpt_container[trajid].get_gdT() +=
+//          omg * step * wei_surround_ * grad_prev_t * violaDynamicObsPenaD * piece_num_container[trajid];
+//    }
 
   }
   return totalPenalty;

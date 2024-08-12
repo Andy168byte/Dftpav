@@ -146,14 +146,16 @@ class PolyTrajOptimizer {
                          Eigen::Vector2d &gradp,
                          double &costp);
 
-  bool surroundGradCostP(const int i_dp,
-                         const double t,
-                         const Eigen::Vector2d &p,
-                         const Eigen::Vector2d &v,
-                         Eigen::Vector2d &gradp,
-                         double &gradt,
-                         double &grad_prev_t,
-                         double &costp);
+  double surroundGradCostP(const double t,
+                           const Eigen::Vector2d &p,
+                           const Eigen::Vector2d &v,
+                           double omg,
+                           double step,
+                           const double &gama,
+                           const int &trajid,
+                           const int &pieceid,
+                           const Eigen::Matrix<double, 6, 1> &beta0,
+                           const Eigen::Matrix<double, 6, 1> &beta1);
 
   double dynamicObsGradCostP(const double &omg,
                              const double &step,

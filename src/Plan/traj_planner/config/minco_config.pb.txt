@@ -80,12 +80,12 @@ opt_cfg {
   max_frontend_backward_acc: 4.0
   max_frontend_cur: 1.0
   
-  max_forward_vel: 5.0
-  max_forward_acc: 8.0
+  max_forward_vel: 8.0
+  max_forward_acc: 10.0
   max_forward_cur: 1.0
 
-  max_backward_vel: 2.0
-  max_backward_acc: 4.0
+  max_backward_vel: 8.0
+  max_backward_acc: 10.0
   max_backward_cur: 1.0
 
   max_latacc: 5.0
